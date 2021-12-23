@@ -110,7 +110,7 @@ void skdev::myfree(void *pAddress)
         {
             LOG_DEBUG("Merging with the left sector");
             pstPrevSector->uiSize += pstSector->uiSize + SIZE_OF_SECTOR;
-            // memset((char*)pstSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);
+            memset((char*)pstSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);
             pstSector = pstPrevSector;
             printSector("Merged Sector", pstSector);
         }
@@ -132,7 +132,7 @@ void skdev::myfree(void *pAddress)
             sector* pstRightOfNextSector = (sector*)(((char*)pstNextSector) + SIZE_OF_SECTOR + pstNextSector->uiSize);
             pstSector->uiSize += pstNextSector->uiSize + SIZE_OF_SECTOR;
             pstSector->bIsFree = true;
-            // memset((char*)pstNextSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);    
+            memset((char*)pstNextSector, 0, pstNextSector->uiSize + SIZE_OF_SECTOR);    
             printSector("Merged Sector", pstSector);
             if (isValidSector(pstRightOfNextSector))
             {
