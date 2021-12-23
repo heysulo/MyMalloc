@@ -20,7 +20,7 @@ bool b_DebugLogs = false;
 //*************************************************************************************************
 void *skdev::mymalloc(unsigned short uiMemorySize)
 {
-    LOG_DEBUG("%s called with %d", __func__, uiMemorySize);
+    LOG_DEBUG("---------- %s called with %d ----------", __func__, uiMemorySize);
     if (!b_Initialized)
     {
         // Filling the whole buffer with zeros to avoid bad reads
@@ -34,6 +34,7 @@ void *skdev::mymalloc(unsigned short uiMemorySize)
         pstInitialSector->bIsFree = true;
         pstInitialSector->uiSize = LEN_MEMORY_SIZE - SIZE_OF_SECTOR;
         pstInitialSector->pstPrevSector = nullptr;
+        b_Initialized = true;
     }
 
     // Jump from sector to sector untill you find a free sector with enough space
@@ -43,7 +44,7 @@ void *skdev::mymalloc(unsigned short uiMemorySize)
         printSector("Current Sector", pstCurrentSector);
 
         // Check if the current sector is good for use
-        if (pstCurrentSector->bIsFree && pstCurrentSector->uiSize > uiMemorySize)
+        if (pstCurrentSector->bIsFree && pstCurrentSector->uiSize >= uiMemorySize)
         {
             // Check if, after allocating the memory, will there be enough space for another sector
             if ((char*)pstCurrentSector + SIZE_OF_SECTOR*2 + uiMemorySize - (char*)p_Buffer < LEN_MEMORY_SIZE)
@@ -69,7 +70,7 @@ void *skdev::mymalloc(unsigned short uiMemorySize)
             return (void*)((char*)pstCurrentSector + SIZE_OF_SECTOR);            
         }
 
-        sector* pstCurrentSector = (sector*)((char*)pstCurrentSector + SIZE_OF_SECTOR + pstCurrentSector->uiSize);
+        pstCurrentSector = (sector*)((char*)pstCurrentSector + SIZE_OF_SECTOR + pstCurrentSector->uiSize);
         LOG_DEBUG("Moving to SectorIndex: %p", pstCurrentSector);
     }
 
@@ -90,7 +91,7 @@ void skdev::printSector(const char* pzName, sector *pstSector)
 //*************************************************************************************************
 void skdev::myfree(void *pAddress)
 {
-    LOG_DEBUG("%s called with %p", __func__, pAddress);
+    LOG_DEBUG("---------- %s called with %p ----------", __func__, pAddress);
     sector* pstSector = (sector*)((char*)pAddress - SIZE_OF_SECTOR);
     if (!isValidSector(pstSector))
     {
@@ -98,6 +99,7 @@ void skdev::myfree(void *pAddress)
         assert(false);
     }
     printSector("Recycling Sector", pstSector);
+    pstSector->bIsFree = true;
     
     // Merge with surrounding sectors if possible
     if (pstSector->pstPrevSector != nullptr)
@@ -108,27 +110,37 @@ void skdev::myfree(void *pAddress)
         {
             LOG_DEBUG("Merging with the left sector");
             pstPrevSector->uiSize += pstSector->uiSize + SIZE_OF_SECTOR;
-            memset((char*)pstSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);
+            // memset((char*)pstSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);
             pstSector = pstPrevSector;
             printSector("Merged Sector", pstSector);
         }
     }
     else
     {
-        LOG_DEBUG("There is no sector on the left");
+        LOG_DEBUG("There is no sector on the left");        
     }
 
     if (((char*)pstSector) + SIZE_OF_SECTOR + pstSector->uiSize < (char*)p_Buffer + LEN_MEMORY_SIZE - 1)
     {
         sector* pstNextSector = (sector*)(((char*)pstSector) + SIZE_OF_SECTOR + pstSector->uiSize);
         printSector("Right Sector", pstNextSector);
+        LOG_DEBUG("Updating Right Sector");
+        pstNextSector->pstPrevSector = pstSector;
         if (pstNextSector->bIsFree)
         {
             LOG_DEBUG("Merging with the Right sector");
+            sector* pstRightOfNextSector = (sector*)(((char*)pstNextSector) + SIZE_OF_SECTOR + pstNextSector->uiSize);
             pstSector->uiSize += pstNextSector->uiSize + SIZE_OF_SECTOR;
             pstSector->bIsFree = true;
-            memset((char*)pstNextSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);    
+            // memset((char*)pstNextSector, 0, pstSector->uiSize + SIZE_OF_SECTOR);    
             printSector("Merged Sector", pstSector);
+            if (isValidSector(pstRightOfNextSector))
+            {
+                LOG_DEBUG("Updating Right Sector of Next Sector");
+                printSector("Right of Next Sector", pstRightOfNextSector);
+                pstRightOfNextSector->pstPrevSector = pstSector;
+                printSector("Updated Right of Next Sector", pstRightOfNextSector);
+            }
         }
     }
     else
@@ -140,8 +152,24 @@ void skdev::myfree(void *pAddress)
 }
 
 //*************************************************************************************************
+sector *skdev::getSector(void *pAddress)
+{
+    return (sector*)((char*)pAddress - SIZE_OF_SECTOR);
+}
+
+//*************************************************************************************************
+sector *skdev::getInitialSector()
+{
+    return (sector*)p_Buffer;
+}
+
+//*************************************************************************************************
 bool skdev::isValidSector(sector *pstSector)
 {
+    if ((char*)pstSector - (char*)p_Buffer > LEN_MEMORY_SIZE)
+    {
+        return false;
+    }
     // TODO: Validate
     return true;
 }

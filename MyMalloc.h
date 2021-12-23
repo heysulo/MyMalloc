@@ -21,6 +21,9 @@ namespace skdev {
     void myfree(void* pAddress);
     void printSector(const char* pzName, sector* pstSector);
 
+    sector* getSector(void* pAddress);
+    sector* getInitialSector();
+
     bool isValidSector(sector* pstSector);
 
     void logDebug(LogLevel iLevel, const char* zFormat, ...);

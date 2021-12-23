@@ -27,6 +27,7 @@
             "type": "shell",
             "label": "Execute Testcases",
             "command": "ctest",
+            "args": ["--verbose"],
             "options": {
                 "cwd": "${workspaceFolder}/build"
             },
